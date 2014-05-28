@@ -3,14 +3,11 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
-    "fibrous": "*",
+    "async": "*",
     "glossy": "*",
-    "hiredis": "*",
-    "logfmt": "*",
     "lru-cache": "*",
     "librato-node": "*",
-    "optimist": "*",
-    "redis": "*"
+    "request": "*"
   },
   "devDependencies": {
     "coffee-script": "*"
