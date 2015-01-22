@@ -19,6 +19,7 @@
     "heroku_log_normalizer": "./bin/heroku_log_normalizer.js"
   },
   "scripts": {
+    "prepublish": "rm -rf ./lib && npm run compile",
     "compile": "coffee --bare --compile --output lib/ src/",
     "build": "npm run compile",
     "test": "mocha",
