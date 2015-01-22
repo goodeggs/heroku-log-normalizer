@@ -31,8 +31,9 @@ splunkQueue = async.cargo (messages, cb) ->
   requestConfig.qs = {sourcetype: 'json_predefined_timestamp'}
   requestConfig.body = messages.join("\r\n")
   request requestConfig, (err, res) ->
-    if err? or res.statusCode >= 500
+    if err? or res.statusCode >= 400
       console.error err or "Error: #{res.statusCode} response"
+      console.error res.body if res?.body?.length
       track 'error', messages.length
       splunkQueue.push messages # retry later
     else
