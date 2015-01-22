@@ -1,10 +1,9 @@
 SyslogParser = require('glossy').Parse
 LRU = require 'lru-cache'
 librato = require 'librato-node'
-async = require 'async'
 http = require 'http'
 url = require 'url'
-request = require 'request'
+SplunkQueue = require './splunk_queue'
 
 librato.configure email: process.env.LIBRATO_EMAIL, token: process.env.LIBRATO_TOKEN
 librato.start()
@@ -12,34 +11,8 @@ librato.start()
 track = (metric, count=1) ->
   librato.increment "production.heroku_log_normalizer.#{metric}", count
 
-splunkConfig = do ->
-  splunkUri = url.parse(process.env.SPLUNK_URI, true)
-  [user, pass] = splunkUri.auth.split ':'
-  return ->
-    {
-      url: "#{splunkUri.protocol}//#{splunkUri.host}#{splunkUri.path}"
-      method: 'POST'
-      auth: {user, pass}
-      headers:
-        'Content-Type': 'text/plain'
-      strictSSL: false
-    }
-
-MAX_LOG_LINE_BATCH_SIZE = 100
-splunkQueue = async.cargo (messages, cb) ->
-  requestConfig = splunkConfig()
-  requestConfig.qs = {sourcetype: 'json_predefined_timestamp'}
-  requestConfig.body = messages.join("\r\n")
-  request requestConfig, (err, res) ->
-    if err? or res.statusCode >= 400
-      console.error err or "Error: #{res.statusCode} response"
-      console.error res.body if res?.body?.length
-      track 'error', messages.length
-      splunkQueue.push messages # retry later
-    else
-      track 'outgoing', messages.length
-    cb()
-, MAX_LOG_LINE_BATCH_SIZE
+splunkQueue = new SplunkQueue process.env.SPLUNK_URI
+splunkQueue.on 'stat', track
 
 # keep a cache of the last 100 unparseable messages so we can attempt to reassemble
 # loglines that heroku's drain infrastructure splits into 1024 character chunks.
@@ -110,7 +83,7 @@ app = http.createServer (req, res) ->
           track 'incoming', syslogMessages.length
           for syslogMessage in syslogMessages
             if json = syslogMessageToJSON(syslogMessage)
-              splunkQueue.push JSON.stringify(json)
+              splunkQueue.push json
             else
               track 'invalid'
 
@@ -127,13 +100,10 @@ app.listen process.env.PORT ? 8000
 process.on 'SIGINT', ->
   console.error 'Got SIGINT.  Exiting.'
   app.close ->
-    if splunkQueue.length()
-      console.error 'Waiting for splunk queue to drain...'
-      pollInterval = setInterval((-> console.error "#{splunkQueue.length()} messages left to send"), 1000)
-      splunkQueue.drain = ->
-        clearInterval pollInterval
-        console.error 'drained!'
-        process.exit 0
-    else
+    console.error 'Waiting for splunk queue to drain...'
+    pollInterval = setInterval((-> console.error "#{splunkQueue.length()} messages left to send"), 1000)
+    splunkQueue.flush ->
+      console.error 'drained!'
+      clearInterval pollInterval
       process.exit 0
 

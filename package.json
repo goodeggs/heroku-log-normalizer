@@ -10,15 +10,18 @@
     "request": "*"
   },
   "devDependencies": {
-    "coffee-script": "*"
+    "chai": "*",
+    "coffee-script": "*",
+    "mocha": "*",
+    "nock": "*"
   },
   "bin": {
     "heroku_log_normalizer": "./bin/heroku_log_normalizer.js"
   },
   "scripts": {
-    "compile": "./node_modules/.bin/coffee -c -o lib src",
-    "prepublish": "rm -rf ./lib && npm run compile",
-    "pretest": "npm run compile",
-    "test": "node bin/heroku_log_normalizer.js test/fixtures/1.log"
+    "compile": "coffee --bare --compile --output lib/ src/",
+    "build": "npm run compile",
+    "test": "mocha",
+    "pretest": "npm run build"
   }
 }
