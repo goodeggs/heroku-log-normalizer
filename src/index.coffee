@@ -99,13 +99,24 @@ app = http.createServer (req, res) ->
 
 app.listen process.env.PORT ? 8000
 
+
+_exit = do ->
+  exited = 0
+  (code) ->
+    return if exited++ # exit only once
+    app.close ->
+      console.error 'Waiting for splunk queue to drain...'
+      pollInterval = setInterval((-> console.error "#{splunkQueue.length()} messages left to send"), 1000)
+      splunkQueue.flush ->
+        console.error 'drained!'
+        clearInterval pollInterval
+        process.exit code
+
 process.on 'SIGINT', ->
   console.error 'Got SIGINT.  Exiting.'
-  app.close ->
-    console.error 'Waiting for splunk queue to drain...'
-    pollInterval = setInterval((-> console.error "#{splunkQueue.length()} messages left to send"), 1000)
-    splunkQueue.flush ->
-      console.error 'drained!'
-      clearInterval pollInterval
-      process.exit 0
+  _exit(127 + 2)
+
+process.on 'SIGTERM', ->
+  console.error 'Got SIGTERM.  Exiting.'
+  _exit(127 + 15)
 
