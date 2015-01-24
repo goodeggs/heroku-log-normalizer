@@ -3,16 +3,18 @@ LRU = require 'lru-cache'
 librato = require 'librato-node'
 http = require 'http'
 url = require 'url'
+os = require 'os'
 SplunkQueue = require './splunk_queue'
 
-librato.configure email: process.env.LIBRATO_EMAIL, token: process.env.LIBRATO_TOKEN
+librato.configure
+  email: process.env.LIBRATO_EMAIL
+  token: process.env.LIBRATO_TOKEN
+  source: os.hostname() # Worker number?
+  prefix: 'heroku_log_normalizer.'
+
 librato.start()
 
-track = (metric, count=1) ->
-  librato.increment "production.heroku_log_normalizer.#{metric}", count
-
-splunkQueue = new SplunkQueue process.env.SPLUNK_URI
-splunkQueue.on 'stat', track
+splunkQueue = new SplunkQueue process.env.SPLUNK_URI, librato
 
 # keep a cache of the last 100 unparseable messages so we can attempt to reassemble
 # loglines that heroku's drain infrastructure splits into 1024 character chunks.
@@ -27,7 +29,7 @@ extractMessage = (syslogMessage, parser) ->
       current += syslogMessage.message
       try
         msg = parser(current)
-        track 'reconstructed'
+        librato.increment 'reconstructed'
         return msg
       catch e
         invalidMessageCache.set key, current
@@ -80,12 +82,12 @@ app = http.createServer (req, res) ->
         syslogMessages.pop()
 
         if syslogMessages.length
-          track 'incoming', syslogMessages.length
+          librato.increment 'incoming', syslogMessages.length
           for syslogMessage in syslogMessages
             if json = syslogMessageToJSON(syslogMessage)
               splunkQueue.push json
             else
-              track 'invalid'
+              librato.increment 'invalid'
 
     else
       res.writeHead 404

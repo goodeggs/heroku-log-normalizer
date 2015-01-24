@@ -1,15 +1,28 @@
-{expect} = require 'chai'
+{expect} = chai = require 'chai'
 nock = require 'nock'
+sinon = require 'sinon'
+chai.use require 'sinon-chai'
+librato = require 'librato-node'
+
 SplunkQueue = require '../lib/splunk_queue'
 
+class StatsMock
+  constructor: ->
+    @stats = []
+
+  increment: (metric, value) ->
+    @stats.push [metric, value]
+
 describe 'SplunkQueue', ->
-  {queue, stats} = {}
+  {queue, stats, statsMock} = {}
 
   beforeEach ->
     stats = []
-    queue = new SplunkQueue 'https://x:y@splunkstorm.com/1/http/input?token=foobar'
-    queue.on 'stat', (stat, val) ->
-      stats.push [stat, val]
+    sinon.stub librato, 'increment'
+    queue = new SplunkQueue 'https://x:y@splunkstorm.com/1/http/input?token=foobar', librato
+
+  afterEach ->
+    librato.increment.restore()
 
   after ->
     nock.restore()
@@ -34,8 +47,8 @@ describe 'SplunkQueue', ->
     it 'posts to splunk', ->
       scope.done()
 
-    it 'emits stats', ->
-      expect(stats).to.eql [['outgoing', 1]]
+    it 'called stats', ->
+      expect(librato.increment).to.have.been.calledWith 'outgoing', 1
 
   describe 'a flood of messages', ->
     {scope} = {}
@@ -60,6 +73,6 @@ describe 'SplunkQueue', ->
     it 'posts to splunk', ->
       scope.done()
 
-    it 'emits stats', ->
-      expect(stats).to.eql [['outgoing', 1], ['outgoing', 3]]
-
+    it 'calls stats', ->
+      expect(librato.increment).to.have.been.calledWith 'outgoing', 1
+      expect(librato.increment).to.have.been.calledWith 'outgoing', 3

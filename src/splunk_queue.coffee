@@ -7,7 +7,7 @@ class SplunkQueue extends EventEmitter
 
   @MAX_LOG_LINE_BATCH_SIZE: 1000
 
-  constructor: (splunkURI) ->
+  constructor: (splunkURI, @stats) ->
     @_splunkUri = url.parse(splunkURI, true)
     [@_user, @_pass] = @_splunkUri.auth.split ':'
 
@@ -34,10 +34,10 @@ class SplunkQueue extends EventEmitter
       if err? or res.statusCode >= 400
         console.error err or "Error: #{res.statusCode} response"
         console.error res.body if res?.body?.length
-        @emit 'stat', 'error', messages.length
+        @stats.increment 'error', messages.length
         @_queue.push messages # retry later
       else
-        @emit 'stat', 'outgoing', messages.length
+        @stats.increment 'outgoing', messages.length
       cb()
 
   _makeRequestConfig: ->

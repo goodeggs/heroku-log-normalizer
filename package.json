@@ -13,7 +13,9 @@
     "chai": "*",
     "coffee-script": "*",
     "mocha": "*",
-    "nock": "*"
+    "nock": "*",
+    "sinon": "~1.12.2",
+    "sinon-chai": "~2.6.0"
   },
   "bin": {
     "heroku_log_normalizer": "./bin/heroku_log_normalizer.js"
