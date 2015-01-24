@@ -5,7 +5,7 @@ url = require 'url'
 
 class SplunkQueue extends EventEmitter
 
-  @MAX_LOG_LINE_BATCH_SIZE: 100
+  @MAX_LOG_LINE_BATCH_SIZE: 1000
 
   constructor: (splunkURI) ->
     @_splunkUri = url.parse(splunkURI, true)
