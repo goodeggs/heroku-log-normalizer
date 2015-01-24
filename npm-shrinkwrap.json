@@ -160,6 +160,50 @@
       "version": "2.6.0",
       "from": "sinon-chai@",
       "resolved": "https://registry.nodejitsu.com/sinon-chai/-/sinon-chai-2.6.0.tgz"
+    },
+    "bunyan": {
+      "version": "1.3.2",
+      "from": "bunyan@",
+      "dependencies": {
+        "dtrace-provider": {
+          "version": "0.3.1",
+          "from": "dtrace-provider@~0.3 >0.3.0",
+          "dependencies": {
+            "nan": {
+              "version": "1.3.0",
+              "from": "nan@~1.3.0"
+            }
+          }
+        },
+        "mv": {
+          "version": "2.0.3",
+          "from": "mv@~2",
+          "dependencies": {
+            "mkdirp": {
+              "version": "0.5.0",
+              "from": "mkdirp@~0.5.0",
+              "dependencies": {
+                "minimist": {
+                  "version": "0.0.8",
+                  "from": "minimist@0.0.8"
+                }
+              }
+            },
+            "ncp": {
+              "version": "0.6.0",
+              "from": "ncp@~0.6.0"
+            },
+            "rimraf": {
+              "version": "2.2.8",
+              "from": "rimraf@~2.2.8"
+            }
+          }
+        },
+        "safe-json-stringify": {
+          "version": "1.0.1",
+          "from": "safe-json-stringify@~1"
+        }
+      }
     }
   }
 }

@@ -3,8 +3,11 @@ request = require 'request'
 url = require 'url'
 {EventEmitter} = require 'events'
 
+logger = (require './logger').child module: 'splunk_queue'
+
 milliseconds = ([seconds, nanoSeconds]) ->
   seconds * 1000 + ~~(nanoSeconds / 1e6) # bitwise NOT NOT will floor
+
 
 class SplunkQueue extends EventEmitter
 
@@ -46,6 +49,7 @@ class SplunkQueue extends EventEmitter
         @_queue.push messages # retry later
       else
         @stats.increment 'outgoing', messages.length
+      logger.info 'Response complete', time: responseTime, queue: @_queue.length(), messages: messages.length, size: requestConfig.body.length
       cb()
 
   _makeRequestConfig: ->
