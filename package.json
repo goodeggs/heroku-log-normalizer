@@ -6,7 +6,7 @@
     "async": "*",
     "glossy": "*",
     "lru-cache": "*",
-    "librato-node": "*",
+    "librato-node": "~1.2.2",
     "request": "*"
   },
   "devDependencies": {
