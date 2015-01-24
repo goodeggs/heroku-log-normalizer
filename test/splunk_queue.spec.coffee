@@ -19,10 +19,12 @@ describe 'SplunkQueue', ->
   beforeEach ->
     stats = []
     sinon.stub librato, 'increment'
+    sinon.stub librato, 'timing'
     queue = new SplunkQueue 'https://x:y@splunkstorm.com/1/http/input?token=foobar', librato
 
   afterEach ->
     librato.increment.restore()
+    librato.timing.restore()
 
   after ->
     nock.restore()
@@ -65,7 +67,7 @@ describe 'SplunkQueue', ->
         queue.push {foo: 3}
         queue.push {foo: 4}
         queue.flush done
-      , 0
+      , 10
 
     afterEach ->
       nock.cleanAll()

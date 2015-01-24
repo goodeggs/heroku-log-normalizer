@@ -3,6 +3,9 @@ request = require 'request'
 url = require 'url'
 {EventEmitter} = require 'events'
 
+milliseconds = ([seconds, nanoSeconds]) ->
+  seconds * 1000 + ~~(nanoSeconds / 1e6) # bitwise NOT NOT will floor
+
 class SplunkQueue extends EventEmitter
 
   @MAX_LOG_LINE_BATCH_SIZE: 1000
@@ -30,7 +33,12 @@ class SplunkQueue extends EventEmitter
     requestConfig = @_makeRequestConfig()
     requestConfig.qs = {sourcetype: 'json_predefined_timestamp'}
     requestConfig.body = messages.map(JSON.stringify).join("\r\n")
+    @stats.increment 'splunk.count'
+    timer = process.hrtime()
     request requestConfig, (err, res) =>
+      responseTime = milliseconds process.hrtime(timer)
+      @stats.timing 'splunk.time', responseTime
+      @stats.timing 'splunk.size', requestConfig.body.length
       if err? or res.statusCode >= 400
         console.error err or "Error: #{res.statusCode} response"
         console.error res.body if res?.body?.length
