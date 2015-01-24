@@ -6,6 +6,8 @@ url = require 'url'
 os = require 'os'
 SplunkQueue = require './splunk_queue'
 
+logger = require('./logger').child module: 'app'
+
 librato.configure
   email: process.env.LIBRATO_EMAIL
   token: process.env.LIBRATO_TOKEN
@@ -93,7 +95,7 @@ app = http.createServer (req, res) ->
       res.writeHead 404
       res.end()
   catch e
-    console.error e.stack ? e
+    logger.error e.stack ? e
     res.writeHead 503
     res.end()
 
@@ -105,18 +107,18 @@ _exit = do ->
   (code) ->
     return if exited++ # exit only once
     app.close ->
-      console.error 'Waiting for splunk queue to drain...'
-      pollInterval = setInterval((-> console.error "#{splunkQueue.length()} messages left to send"), 1000)
+      logger.info 'Waiting for splunk queue to drain...'
+      pollInterval = setInterval((-> logger.info "#{splunkQueue.length()} messages left to send"), 1000)
       splunkQueue.flush ->
-        console.error 'drained!'
+        logger.info 'drained!'
         clearInterval pollInterval
         process.exit code
 
 process.on 'SIGINT', ->
-  console.error 'Got SIGINT.  Exiting.'
+  logger.info 'Got SIGINT.  Exiting.'
   _exit(127 + 2)
 
 process.on 'SIGTERM', ->
-  console.error 'Got SIGTERM.  Exiting.'
+  logger.info 'Got SIGTERM.  Exiting.'
   _exit(127 + 15)
 

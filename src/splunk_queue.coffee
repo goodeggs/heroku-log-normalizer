@@ -43,8 +43,8 @@ class SplunkQueue extends EventEmitter
       @stats.timing 'splunk.time', responseTime
       @stats.timing 'splunk.size', requestConfig.body.length
       if err? or res.statusCode >= 400
-        console.error err or "Error: #{res.statusCode} response"
-        console.error res.body if res?.body?.length
+        logger.error err if err?
+        logger.error {msg: "Error: #{res.statusCode} response", status: res.statusCode, body: res.body} if res?
         @stats.increment 'error', messages.length
         @_queue.push messages # retry later
       else
