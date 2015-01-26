@@ -61,13 +61,13 @@ class SplunkQueue extends EventEmitter
 
     @stats.increment 'splunk.count'
     timer = process.hrtime()
-    request requestConfig, @_onComplete(cb, timer, messages)
+    request requestConfig, @_onComplete(cb, {timer, messages, size: requestConfig.body.length})
 
-  _onComplete: (cb, timer, messages) ->
+  _onComplete: (cb, {timer, messages, size}) ->
     (err, res) =>
         responseTime = milliseconds process.hrtime(timer)
         @stats.timing 'splunk.time', responseTime
-        @stats.timing 'splunk.size', res?.req?.body?.length
+        @stats.timing 'splunk.size', size
         if err? or res.statusCode >= 400
           logger.error err if err?
           logger.error {msg: "Error: #{res.statusCode} response", status: res.statusCode, body: res.body} if res?
@@ -75,7 +75,7 @@ class SplunkQueue extends EventEmitter
           @_queue.push messages # retry later
         else
           @stats.increment 'outgoing', messages.length
-        logger.info 'Response complete', time: responseTime, queue: @_queue.length(), messages: messages.length, size: res?.req?.body?.length
+        logger.info {responseTime: responseTime, queue: @_queue.length(), messages: messages.length, size: size}, 'Response complete'
         cb()
 
 

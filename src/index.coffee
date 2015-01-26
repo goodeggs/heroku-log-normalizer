@@ -107,7 +107,7 @@ _exit = do ->
   (code) ->
     return if exited++ # exit only once
     app.close ->
-      logger.info 'Waiting for splunk queue to drain...'
+      logger.warn 'Waiting for splunk queue to drain...'
       pollInterval = setInterval((-> logger.info "#{splunkQueue.length()} messages left to send"), 1000)
       splunkQueue.flush ->
         logger.info 'drained!'
@@ -115,10 +115,9 @@ _exit = do ->
         process.exit code
 
 process.on 'SIGINT', ->
-  logger.info 'Got SIGINT.  Exiting.'
+  logger.warn 'Got SIGINT.  Exiting.'
   _exit(127 + 2)
 
 process.on 'SIGTERM', ->
-  logger.info 'Got SIGTERM.  Exiting.'
+  logger.warn 'Got SIGTERM.  Exiting.'
   _exit(127 + 15)
-
