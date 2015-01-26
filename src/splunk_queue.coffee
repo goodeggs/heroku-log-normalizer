@@ -38,19 +38,23 @@ class SplunkQueue extends EventEmitter
     requestConfig.body = messages.map(JSON.stringify).join("\r\n")
     @stats.increment 'splunk.count'
     timer = process.hrtime()
-    request requestConfig, (err, res) =>
-      responseTime = milliseconds process.hrtime(timer)
-      @stats.timing 'splunk.time', responseTime
-      @stats.timing 'splunk.size', requestConfig.body.length
-      if err? or res.statusCode >= 400
-        logger.error err if err?
-        logger.error {msg: "Error: #{res.statusCode} response", status: res.statusCode, body: res.body} if res?
-        @stats.increment 'error', messages.length
-        @_queue.push messages # retry later
-      else
-        @stats.increment 'outgoing', messages.length
-      logger.info 'Response complete', time: responseTime, queue: @_queue.length(), messages: messages.length, size: requestConfig.body.length
-      cb()
+    request requestConfig, @_onComplete(cb, timer, messages)
+
+  _onComplete: (cb, timer, messages) ->
+    (err, res) =>
+        responseTime = milliseconds process.hrtime(timer)
+        @stats.timing 'splunk.time', responseTime
+        @stats.timing 'splunk.size', res?.req?.body?.length
+        if err? or res.statusCode >= 400
+          logger.error err if err?
+          logger.error {msg: "Error: #{res.statusCode} response", status: res.statusCode, body: res.body} if res?
+          @stats.increment 'error', messages.length
+          @_queue.push messages # retry later
+        else
+          @stats.increment 'outgoing', messages.length
+        logger.info 'Response complete', time: responseTime, queue: @_queue.length(), messages: messages.length, size: res?.req?.body?.length
+        cb()
+
 
   _makeRequestConfig: ->
     {
