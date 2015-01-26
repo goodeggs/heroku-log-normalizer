@@ -13,11 +13,11 @@ class SplunkQueue extends EventEmitter
 
   @MAX_LOG_LINE_BATCH_SIZE: 1000
 
-  constructor: (splunkURI, @stats) ->
+  constructor: (splunkURI, @stats, @throttle = true) ->
     @_splunkUri = url.parse(splunkURI, true)
     [@_user, @_pass] = @_splunkUri.auth.split ':'
 
-    @_queue = async.cargo @_send.bind(@), @constructor.MAX_LOG_LINE_BATCH_SIZE
+    @_queue = async.cargo @_worker.bind(@), @constructor.MAX_LOG_LINE_BATCH_SIZE
 
   push: (args...) ->
     @_queue.push args...
@@ -31,6 +31,25 @@ class SplunkQueue extends EventEmitter
       @_queue.drain = cb
     else
       cb()
+
+  _worker: (messages, cb) ->
+    timer = process.hrtime()
+    @_send messages, =>
+      return cb() unless @throttle
+
+      # If the queue is low, wait before next job
+      if @_queue.length() < SplunkQueue.MAX_LOG_LINE_BATCH_SIZE
+        return setTimeout cb, 5000
+
+      wait = 0
+      [seconds, nanoseconds] = process.hrtime(timer)
+      if seconds < 1
+        elapsed = milliseconds [seconds, nanoseconds]
+        # Approximately call cb once per second
+        # wait + time elapsed = 1 second
+        wait = 1000 - elapsed
+      setTimeout cb, wait
+
 
   _send: (messages, cb) ->
     requestConfig = @_makeRequestConfig()
