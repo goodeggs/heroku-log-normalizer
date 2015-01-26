@@ -1,0 +1,7 @@
+bunyan = require 'bunyan'
+GLOBAL.logger ?= logger = bunyan.createLogger name: 'heroku_log_normalizer'
+
+if process.env.NODE_ENV is 'test'
+  logger.level('warn')
+
+module.exports = logger

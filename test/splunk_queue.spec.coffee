@@ -1,15 +1,30 @@
-{expect} = require 'chai'
+{expect} = chai = require 'chai'
 nock = require 'nock'
+sinon = require 'sinon'
+chai.use require 'sinon-chai'
+librato = require 'librato-node'
+
 SplunkQueue = require '../lib/splunk_queue'
 
+class StatsMock
+  constructor: ->
+    @stats = []
+
+  increment: (metric, value) ->
+    @stats.push [metric, value]
+
 describe 'SplunkQueue', ->
-  {queue, stats} = {}
+  {queue, stats, statsMock} = {}
 
   beforeEach ->
     stats = []
-    queue = new SplunkQueue 'https://x:y@splunkstorm.com/1/http/input?token=foobar'
-    queue.on 'stat', (stat, val) ->
-      stats.push [stat, val]
+    sinon.stub librato, 'increment'
+    sinon.stub librato, 'timing'
+    queue = new SplunkQueue 'https://x:y@splunkstorm.com/1/http/input?token=foobar', librato, false
+
+  afterEach ->
+    librato.increment.restore()
+    librato.timing.restore()
 
   after ->
     nock.restore()
@@ -34,8 +49,8 @@ describe 'SplunkQueue', ->
     it 'posts to splunk', ->
       scope.done()
 
-    it 'emits stats', ->
-      expect(stats).to.eql [['outgoing', 1]]
+    it 'called stats', ->
+      expect(librato.increment).to.have.been.calledWith 'outgoing', 1
 
   describe 'a flood of messages', ->
     {scope} = {}
@@ -52,7 +67,7 @@ describe 'SplunkQueue', ->
         queue.push {foo: 3}
         queue.push {foo: 4}
         queue.flush done
-      , 0
+      , 10
 
     afterEach ->
       nock.cleanAll()
@@ -60,6 +75,43 @@ describe 'SplunkQueue', ->
     it 'posts to splunk', ->
       scope.done()
 
-    it 'emits stats', ->
-      expect(stats).to.eql [['outgoing', 1], ['outgoing', 3]]
+    it 'calls stats', ->
+      expect(librato.increment).to.have.been.calledWith 'outgoing', 1
+      expect(librato.increment).to.have.been.calledWith 'outgoing', 3
 
+  describe '::_worker', ->
+    {completeWork} = {}
+
+    beforeEach ->
+      completeWork = null
+      sinon.stub queue, '_send', (messages, cb) -> completeWork = cb
+      sinon.stub GLOBAL, 'setTimeout'
+      queue.throttle = true
+
+    afterEach ->
+      queue._send.restore()
+      GLOBAL.setTimeout.restore()
+      queue.throttle = false
+
+
+    describe 'when queue is low', ->
+      beforeEach ->
+        SplunkQueue.MAX_LOG_LINE_BATCH_SIZE = 100
+        sinon.stub(queue._queue, 'length').returns(10)
+
+      it 'waits 5 seconds', ->
+        queue._worker 'data', ->
+        completeWork()
+        expect(setTimeout).to.have.been.calledWith sinon.match.func, 5000
+
+    describe 'when splunk request is faster than 1 second', ->
+      beforeEach ->
+        SplunkQueue.MAX_LOG_LINE_BATCH_SIZE = 0
+        sinon.stub process, 'hrtime', ->
+          [0, 999 * 1e6] # 999 ms
+
+      it 'waits the remainder of 1-second interval before sending another request', (done) ->
+        queue._worker 'data', ->
+        completeWork()
+        expect(setTimeout).to.have.been.calledWith sinon.match.func, 1
+        done()

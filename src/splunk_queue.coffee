@@ -3,15 +3,21 @@ request = require 'request'
 url = require 'url'
 {EventEmitter} = require 'events'
 
+logger = (require './logger').child module: 'splunk_queue'
+
+milliseconds = ([seconds, nanoSeconds]) ->
+  seconds * 1000 + ~~(nanoSeconds / 1e6) # bitwise NOT NOT will floor
+
+
 class SplunkQueue extends EventEmitter
 
-  @MAX_LOG_LINE_BATCH_SIZE: 100
+  @MAX_LOG_LINE_BATCH_SIZE: 1000
 
-  constructor: (splunkURI) ->
+  constructor: (splunkURI, @stats, @throttle = true) ->
     @_splunkUri = url.parse(splunkURI, true)
     [@_user, @_pass] = @_splunkUri.auth.split ':'
 
-    @_queue = async.cargo @_send.bind(@), @constructor.MAX_LOG_LINE_BATCH_SIZE
+    @_queue = async.cargo @_worker.bind(@), @constructor.MAX_LOG_LINE_BATCH_SIZE
 
   push: (args...) ->
     @_queue.push args...
@@ -26,19 +32,52 @@ class SplunkQueue extends EventEmitter
     else
       cb()
 
+  _worker: (messages, cb) ->
+    timer = process.hrtime()
+    @_send messages, =>
+      return cb() unless @throttle
+
+      # If the queue is low, wait before next job
+      if @_queue.length() < SplunkQueue.MAX_LOG_LINE_BATCH_SIZE
+        return setTimeout cb, 5000
+
+      wait = 0
+      [seconds, nanoseconds] = process.hrtime(timer)
+      if seconds < 1
+        elapsed = milliseconds [seconds, nanoseconds]
+        # Approximately call cb once per second
+        # wait + time elapsed = 1 second
+        wait = 1000 - elapsed
+      setTimeout cb, wait
+
+
   _send: (messages, cb) ->
     requestConfig = @_makeRequestConfig()
     requestConfig.qs = {sourcetype: 'json_predefined_timestamp'}
     requestConfig.body = messages.map(JSON.stringify).join("\r\n")
-    request requestConfig, (err, res) =>
-      if err? or res.statusCode >= 400
-        console.error err or "Error: #{res.statusCode} response"
-        console.error res.body if res?.body?.length
-        @emit 'stat', 'error', messages.length
-        @_queue.push messages # retry later
-      else
-        @emit 'stat', 'outgoing', messages.length
-      cb()
+    requestConfig.timeout = 10 * 60 * 1000  # Long timeout (ms) of 10 min. We've seen Splunk  time out at 60 seconds,
+                                            # but not need to set a similar timeout. We only care if heroku logplex is
+                                            # getting backed up. 10 minutes is probably a good compromise.
+
+    @stats.increment 'splunk.count'
+    timer = process.hrtime()
+    request requestConfig, @_onComplete(cb, {timer, messages, size: requestConfig.body.length})
+
+  _onComplete: (cb, {timer, messages, size}) ->
+    (err, res) =>
+        responseTime = milliseconds process.hrtime(timer)
+        @stats.timing 'splunk.time', responseTime
+        @stats.timing 'splunk.size', size
+        if err? or res.statusCode >= 400
+          logger.error err if err?
+          logger.error {msg: "Error: #{res.statusCode} response", status: res.statusCode, body: res.body} if res?
+          @stats.increment 'error', messages.length
+          @_queue.push messages # retry later
+        else
+          @stats.increment 'outgoing', messages.length
+        logger.info {responseTime: responseTime, queue: @_queue.length(), messages: messages.length, size: size}, 'Response complete'
+        cb()
+
 
   _makeRequestConfig: ->
     {

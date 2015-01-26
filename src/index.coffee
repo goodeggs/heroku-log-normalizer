@@ -3,16 +3,20 @@ LRU = require 'lru-cache'
 librato = require 'librato-node'
 http = require 'http'
 url = require 'url'
+os = require 'os'
 SplunkQueue = require './splunk_queue'
 
-librato.configure email: process.env.LIBRATO_EMAIL, token: process.env.LIBRATO_TOKEN
+logger = require('./logger').child module: 'app'
+
+librato.configure
+  email: process.env.LIBRATO_EMAIL
+  token: process.env.LIBRATO_TOKEN
+  source: os.hostname() # Worker number?
+  prefix: 'heroku_log_normalizer.'
+
 librato.start()
 
-track = (metric, count=1) ->
-  librato.increment "production.heroku_log_normalizer.#{metric}", count
-
-splunkQueue = new SplunkQueue process.env.SPLUNK_URI
-splunkQueue.on 'stat', track
+splunkQueue = new SplunkQueue process.env.SPLUNK_URI, librato
 
 # keep a cache of the last 100 unparseable messages so we can attempt to reassemble
 # loglines that heroku's drain infrastructure splits into 1024 character chunks.
@@ -27,7 +31,7 @@ extractMessage = (syslogMessage, parser) ->
       current += syslogMessage.message
       try
         msg = parser(current)
-        track 'reconstructed'
+        librato.increment 'reconstructed'
         return msg
       catch e
         invalidMessageCache.set key, current
@@ -80,30 +84,45 @@ app = http.createServer (req, res) ->
         syslogMessages.pop()
 
         if syslogMessages.length
-          track 'incoming', syslogMessages.length
+          librato.increment 'incoming', syslogMessages.length
           for syslogMessage in syslogMessages
             if json = syslogMessageToJSON(syslogMessage)
               splunkQueue.push json
             else
-              track 'invalid'
+              librato.increment 'invalid'
 
     else
       res.writeHead 404
       res.end()
   catch e
-    console.error e.stack ? e
+    logger.error e.stack ? e
     res.writeHead 503
     res.end()
 
 app.listen process.env.PORT ? 8000
 
-process.on 'SIGINT', ->
-  console.error 'Got SIGINT.  Exiting.'
-  app.close ->
-    console.error 'Waiting for splunk queue to drain...'
-    pollInterval = setInterval((-> console.error "#{splunkQueue.length()} messages left to send"), 1000)
-    splunkQueue.flush ->
-      console.error 'drained!'
-      clearInterval pollInterval
-      process.exit 0
 
+_exit = do ->
+  exited = 0
+  (code) ->
+    return if exited++ # exit only once
+    app.close ->
+      logger.warn 'Waiting for splunk queue to drain...'
+      pollInterval = setInterval((-> logger.info "#{splunkQueue.length()} messages left to send"), 1000)
+      splunkQueue.flush ->
+        logger.info 'drained!'
+        clearInterval pollInterval
+        process.exit code
+
+process.on 'SIGINT', do ->
+  signalCount = 0
+  ->
+    code = 127 + 2
+    logger.warn 'Got SIGINT.  Exiting.'
+    _exit(code)
+    if signalCount++ > 0
+      process.exit(code)
+
+process.on 'SIGTERM', ->
+  logger.warn 'Got SIGTERM.  Exiting.'
+  _exit(127 + 15)
