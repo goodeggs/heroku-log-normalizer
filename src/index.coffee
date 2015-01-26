@@ -114,9 +114,14 @@ _exit = do ->
         clearInterval pollInterval
         process.exit code
 
-process.on 'SIGINT', ->
-  logger.warn 'Got SIGINT.  Exiting.'
-  _exit(127 + 2)
+process.on 'SIGINT', do ->
+  signalCount = 0
+  ->
+    code = 127 + 2
+    logger.warn 'Got SIGINT.  Exiting.'
+    _exit(code)
+    if signalCount++ > 0
+      process.exit(code)
 
 process.on 'SIGTERM', ->
   logger.warn 'Got SIGTERM.  Exiting.'
