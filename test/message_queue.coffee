@@ -4,7 +4,7 @@ sinon = require 'sinon'
 chai.use require 'sinon-chai'
 librato = require 'librato-node'
 
-SplunkQueue = require '../lib/splunk_queue'
+MessageQueue = require '../lib/message_queue'
 
 class StatsMock
   constructor: ->
@@ -13,14 +13,14 @@ class StatsMock
   increment: (metric, value) ->
     @stats.push [metric, value]
 
-describe 'SplunkQueue', ->
+describe 'MessageQueue', ->
   {queue, stats, statsMock} = {}
 
   beforeEach ->
     stats = []
     sinon.stub librato, 'increment'
     sinon.stub librato, 'timing'
-    queue = new SplunkQueue 'https://x:y@splunkstorm.com/1/http/input?token=foobar', librato, false
+    queue = new MessageQueue 'https://x:y@splunkstorm.com/1/http/input?token=foobar', librato, false
 
   afterEach ->
     librato.increment.restore()
@@ -96,7 +96,7 @@ describe 'SplunkQueue', ->
 
     describe 'when queue is low', ->
       beforeEach ->
-        SplunkQueue.MAX_LOG_LINE_BATCH_SIZE = 100
+        MessageQueue.MAX_LOG_LINE_BATCH_SIZE = 100
         sinon.stub(queue._queue, 'length').returns(10)
 
       it 'waits 5 seconds', ->
@@ -106,7 +106,7 @@ describe 'SplunkQueue', ->
 
     describe 'when splunk request is faster than 1 second', ->
       beforeEach ->
-        SplunkQueue.MAX_LOG_LINE_BATCH_SIZE = 0
+        MessageQueue.MAX_LOG_LINE_BATCH_SIZE = 0
         sinon.stub process, 'hrtime', ->
           [0, 999 * 1e6] # 999 ms
 

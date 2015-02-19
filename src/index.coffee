@@ -4,7 +4,7 @@ librato = require 'librato-node'
 http = require 'http'
 url = require 'url'
 os = require 'os'
-SplunkQueue = require './splunk_queue'
+MessageQueue = require './message_queue'
 
 logger = require('./logger').child module: 'app'
 
@@ -16,7 +16,7 @@ librato.configure
 
 librato.start()
 
-splunkQueue = new SplunkQueue process.env.SPLUNK_URI, librato
+messageQueue = new MessageQueue process.env.SPLUNK_URI, librato
 
 # keep a cache of the last 100 unparseable messages so we can attempt to reassemble
 # loglines that heroku's drain infrastructure splits into 1024 character chunks.
@@ -87,7 +87,7 @@ app = http.createServer (req, res) ->
           librato.increment 'incoming', syslogMessages.length
           for syslogMessage in syslogMessages
             if json = syslogMessageToJSON(syslogMessage)
-              splunkQueue.push json
+              messageQueue.push json
             else
               librato.increment 'invalid'
 
@@ -108,8 +108,8 @@ _exit = do ->
     return if exited++ # exit only once
     app.close ->
       logger.warn 'Waiting for splunk queue to drain...'
-      pollInterval = setInterval((-> logger.info "#{splunkQueue.length()} messages left to send"), 1000)
-      splunkQueue.flush ->
+      pollInterval = setInterval((-> logger.info "#{messageQueue.length()} messages left to send"), 1000)
+      messageQueue.flush ->
         logger.info 'drained!'
         clearInterval pollInterval
         process.exit code

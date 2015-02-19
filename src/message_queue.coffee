@@ -3,13 +3,13 @@ request = require 'request'
 url = require 'url'
 {EventEmitter} = require 'events'
 
-logger = (require './logger').child module: 'splunk_queue'
+logger = (require './logger').child module: 'message_queue'
 
 milliseconds = ([seconds, nanoSeconds]) ->
   seconds * 1000 + ~~(nanoSeconds / 1e6) # bitwise NOT NOT will floor
 
 
-class SplunkQueue extends EventEmitter
+class MessageQueue extends EventEmitter
 
   @MAX_LOG_LINE_BATCH_SIZE: 1000
 
@@ -38,7 +38,7 @@ class SplunkQueue extends EventEmitter
       return cb() unless @throttle
 
       # If the queue is low, wait before next job
-      if @_queue.length() < SplunkQueue.MAX_LOG_LINE_BATCH_SIZE
+      if @_queue.length() < MessageQueue.MAX_LOG_LINE_BATCH_SIZE
         return setTimeout cb, 5000
 
       wait = 0
@@ -89,5 +89,5 @@ class SplunkQueue extends EventEmitter
       strictSSL: false
     }
 
-module.exports = SplunkQueue
+module.exports = MessageQueue
 
