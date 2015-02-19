@@ -30,6 +30,11 @@ describe 'SplunkTransport', ->
 
     it 'posts to splunk', ->
       scope.done()
+      
+    it 'records stats', ->
+      expect(librato.increment).to.have.been.calledWith 'splunk.count'
+      expect(librato.timing).to.have.been.calledWithMatch 'splunk.time', sinon.match.number
+      expect(librato.timing).to.have.been.calledWith 'splunk.size', 9
 
   describe 'sending two messages', ->
     {scope} = {}

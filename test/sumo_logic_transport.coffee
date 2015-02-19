@@ -30,6 +30,11 @@ describe 'SumoLogicTransport', ->
 
     it 'posts to sumo logic', ->
       scope.done()
+      
+    it 'records stats', ->
+      expect(librato.increment).to.have.been.calledWith 'sumo_logic.count'
+      expect(librato.timing).to.have.been.calledWithMatch 'sumo_logic.time', sinon.match.number
+      expect(librato.timing).to.have.been.calledWith 'sumo_logic.size', 9
 
   describe 'sending two messages', ->
     {scope} = {}
