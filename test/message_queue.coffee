@@ -1,6 +1,4 @@
-{expect} = chai = require 'chai'
-sinon = require 'sinon'
-chai.use require 'sinon-chai'
+{expect, sinon} = require './test_helper'
 librato = require 'librato-node'
 
 MessageQueue = require '../lib/message_queue'
