@@ -4,7 +4,7 @@ librato = require 'librato-node'
 http = require 'http'
 url = require 'url'
 os = require 'os'
-SplunkQueue = require './splunk_queue'
+MessageQueue = require './message_queue'
 
 logger = require('./logger').child module: 'app'
 
@@ -16,7 +16,16 @@ librato.configure
 
 librato.start()
 
-splunkQueue = new SplunkQueue process.env.SPLUNK_URI, librato
+if /splunkstorm[.]com/i.test(process.env.TRANSPORT_URI)
+  SplunkTransport = require './splunk_transport'
+  transport = new SplunkTransport process.env.TRANSPORT_URI, librato
+else if /sumologic[.]com/i.test(process.env.TRANSPORT_URI)
+  SumoLogicTransport = require './sumo_logic_transport'
+  transport = new SumoLogicTransport process.env.TRANSPORT_URI, librato
+else
+  throw new Error("could not infer transport from TRANSPORT_URI=#{process.env.TRANSPORT_URI}")
+
+messageQueue = new MessageQueue transport, librato
 
 # keep a cache of the last 100 unparseable messages so we can attempt to reassemble
 # loglines that heroku's drain infrastructure splits into 1024 character chunks.
@@ -87,7 +96,7 @@ app = http.createServer (req, res) ->
           librato.increment 'incoming', syslogMessages.length
           for syslogMessage in syslogMessages
             if json = syslogMessageToJSON(syslogMessage)
-              splunkQueue.push json
+              messageQueue.push json
             else
               librato.increment 'invalid'
 
@@ -107,9 +116,9 @@ _exit = do ->
   (code) ->
     return if exited++ # exit only once
     app.close ->
-      logger.warn 'Waiting for splunk queue to drain...'
-      pollInterval = setInterval((-> logger.info "#{splunkQueue.length()} messages left to send"), 1000)
-      splunkQueue.flush ->
+      logger.warn 'Waiting for message queue to drain...'
+      pollInterval = setInterval((-> logger.info "#{messageQueue.length()} messages left to send"), 1000)
+      messageQueue.flush ->
         logger.info 'drained!'
         clearInterval pollInterval
         process.exit code

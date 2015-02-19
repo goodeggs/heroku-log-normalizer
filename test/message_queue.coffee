@@ -1,33 +1,22 @@
-{expect} = chai = require 'chai'
-nock = require 'nock'
-sinon = require 'sinon'
-chai.use require 'sinon-chai'
+{expect, sinon} = require './test_helper'
 librato = require 'librato-node'
 
-SplunkQueue = require '../lib/splunk_queue'
+MessageQueue = require '../lib/message_queue'
+Transport = require '../lib/transport'
 
-class StatsMock
-  constructor: ->
-    @stats = []
-
-  increment: (metric, value) ->
-    @stats.push [metric, value]
-
-describe 'SplunkQueue', ->
-  {queue, stats, statsMock} = {}
+describe 'MessageQueue', ->
+  {transport, queue, stats, statsMock} = {}
 
   beforeEach ->
-    stats = []
     sinon.stub librato, 'increment'
     sinon.stub librato, 'timing'
-    queue = new SplunkQueue 'https://x:y@splunkstorm.com/1/http/input?token=foobar', librato, false
+    transport = sinon.createStubInstance Transport
+    transport.send.yields(null, {responseTime: 500, size: 1024})
+    queue = new MessageQueue transport, librato, false
 
   afterEach ->
     librato.increment.restore()
     librato.timing.restore()
-
-  after ->
-    nock.restore()
 
   describe 'with no messages', ->
     it 'length is 0', ->
@@ -37,30 +26,18 @@ describe 'SplunkQueue', ->
     {scope} = {}
 
     beforeEach (done) ->
-      scope = nock 'https://splunkstorm.com'
-        .post '/1/http/input?token=foobar&sourcetype=json_predefined_timestamp', '{"foo":1}'
-        .reply 200
       queue.push {foo: 1}
       queue.flush done
 
-    afterEach ->
-      nock.cleanAll()
+    it 'sends the message', ->
+      expect(transport.send).to.have.been.calledWith [{foo: 1}]
 
-    it 'posts to splunk', ->
-      scope.done()
-
-    it 'called stats', ->
+    it 'calls stats', ->
       expect(librato.increment).to.have.been.calledWith 'outgoing', 1
 
   describe 'a flood of messages', ->
-    {scope} = {}
 
     beforeEach (done) ->
-      scope = nock 'https://splunkstorm.com'
-        .post '/1/http/input?token=foobar&sourcetype=json_predefined_timestamp', '{"foo":1}'
-          .reply 200
-        .post '/1/http/input?token=foobar&sourcetype=json_predefined_timestamp', '{"foo":2}\r\n{"foo":3}\r\n{"foo":4}'
-          .reply 200
       queue.push {foo: 1}
       setTimeout ->
         queue.push {foo: 2}
@@ -69,11 +46,10 @@ describe 'SplunkQueue', ->
         queue.flush done
       , 10
 
-    afterEach ->
-      nock.cleanAll()
-
-    it 'posts to splunk', ->
-      scope.done()
+    it 'sends the messages', ->
+      expect(transport.send).to.have.been.calledTwice
+      expect(transport.send.firstCall.args[0]).to.eql [{foo: 1}]
+      expect(transport.send.secondCall.args[0]).to.eql [{foo: 2}, {foo: 3}, {foo: 4}]
 
     it 'calls stats', ->
       expect(librato.increment).to.have.been.calledWith 'outgoing', 1
@@ -96,7 +72,7 @@ describe 'SplunkQueue', ->
 
     describe 'when queue is low', ->
       beforeEach ->
-        SplunkQueue.MAX_LOG_LINE_BATCH_SIZE = 100
+        MessageQueue.MAX_LOG_LINE_BATCH_SIZE = 100
         sinon.stub(queue._queue, 'length').returns(10)
 
       it 'waits 5 seconds', ->
@@ -104,9 +80,9 @@ describe 'SplunkQueue', ->
         completeWork()
         expect(setTimeout).to.have.been.calledWith sinon.match.func, 5000
 
-    describe 'when splunk request is faster than 1 second', ->
+    describe 'when transport request is faster than 1 second', ->
       beforeEach ->
-        SplunkQueue.MAX_LOG_LINE_BATCH_SIZE = 0
+        MessageQueue.MAX_LOG_LINE_BATCH_SIZE = 0
         sinon.stub process, 'hrtime', ->
           [0, 999 * 1e6] # 999 ms
 
@@ -115,3 +91,4 @@ describe 'SplunkQueue', ->
         completeWork()
         expect(setTimeout).to.have.been.calledWith sinon.match.func, 1
         done()
+
