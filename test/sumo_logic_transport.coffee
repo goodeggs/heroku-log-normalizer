@@ -2,15 +2,15 @@
 nock = require 'nock'
 librato = require 'librato-node'
 
-SplunkTransport = require '../lib/splunk_transport'
+SumoLogicTransport = require '../lib/sumo_logic_transport'
 
-describe 'SplunkTransport', ->
+describe 'SumoLogicTransport', ->
   {transport} = {}
 
   beforeEach ->
     sinon.stub librato, 'increment'
     sinon.stub librato, 'timing'
-    transport = new SplunkTransport 'https://x:y@splunkstorm.com/1/http/input?token=foobar', librato
+    transport = new SumoLogicTransport 'https://collectors.sumologic.com/receiver/v1/http/foobar', librato
 
   afterEach ->
     librato.increment.restore()
@@ -20,29 +20,30 @@ describe 'SplunkTransport', ->
     {scope} = {}
 
     beforeEach (done) ->
-      scope = nock 'https://splunkstorm.com'
-        .post '/1/http/input?token=foobar&sourcetype=json_predefined_timestamp', '{"foo":1}'
+      scope = nock 'https://collectors.sumologic.com'
+        .post '/receiver/v1/http/foobar', '{"foo":1}'
         .reply 200
       transport.send [{foo: 1}], done
 
     afterEach ->
       nock.cleanAll()
 
-    it 'posts to splunk', ->
+    it 'posts to sumo logic', ->
       scope.done()
 
   describe 'sending two messages', ->
     {scope} = {}
 
     beforeEach (done) ->
-      scope = nock 'https://splunkstorm.com'
-        .post '/1/http/input?token=foobar&sourcetype=json_predefined_timestamp', '{"foo":1}\r\n{"foo":2}'
-          .reply 200
+      scope = nock 'https://collectors.sumologic.com'
+        .post '/receiver/v1/http/foobar', '{"foo":1}\r\n{"foo":2}'
+        .reply 200
       transport.send [{foo: 1}, {foo: 2}], done
 
     afterEach ->
       nock.cleanAll()
 
-    it 'posts to splunk', ->
+    it 'posts to sumo logic', ->
       scope.done()
+
 
