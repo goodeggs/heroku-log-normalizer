@@ -6,22 +6,25 @@ milliseconds = ([seconds, nanoSeconds]) ->
 
 class Transport
 
-  constructor: ->
-    @logger = logger.child module: "#{@name}_transport"
+  constructor: (@_name, @_stats) ->
+    @_logger = logger.child module: "#{@_name}_transport"
 
-  request: (opts, cb) ->
-    @stats.increment "#{@name}.count"
+  send: (messages, cb) ->
+    throw new Error('implement me')
+
+  _request: (opts, cb) ->
+    @_stats.increment "#{@_name}.count"
     timer = process.hrtime()
     request opts, @_onComplete(cb, {timer, size: opts.body.length})
 
   _onComplete: (cb, {timer, size}) ->
     (err, res) =>
       responseTime = milliseconds process.hrtime(timer)
-      @stats.timing "#{@name}.time", responseTime
-      @stats.timing "#{@name}.size", size
-      @logger.error err if err?
+      @_stats.timing "#{@_name}.time", responseTime
+      @_stats.timing "#{@_name}.size", size
+      @_logger.error err if err?
       if !err and res.statusCode >= 400
-        @logger.error {status: res.statusCode, body: res.body}, "Error: #{res.statusCode} response"
+        @_logger.error {status: res.statusCode, body: res.body}, "Error: #{res.statusCode} response"
         err = new Error("#{res.statusCode} response")
         err.code = res.statusCode
         err.body = res.body

@@ -4,12 +4,10 @@ Transport = require './transport'
 
 class SplunkTransport extends Transport
 
-  name: 'splunk'
-
-  constructor: (splunkURI, @stats) ->
+  constructor: (splunkURI, stats) ->
+    super 'splunk', stats
     @_splunkUri = url.parse(splunkURI, true)
     [@_user, @_pass] = @_splunkUri.auth.split ':'
-    super()
 
   _makeRequestConfig: ->
     {
@@ -28,7 +26,7 @@ class SplunkTransport extends Transport
     requestConfig.timeout = 10 * 60 * 1000  # Long timeout (ms) of 10 min. We've seen Splunk  time out at 60 seconds,
                                             # but not need to set a similar timeout. We only care if heroku logplex is
                                             # getting backed up. 10 minutes is probably a good compromise.
-    @request requestConfig, cb
+    @_request requestConfig, cb
 
 module.exports = SplunkTransport
 

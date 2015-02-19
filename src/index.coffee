@@ -16,7 +16,8 @@ librato.configure
 
 librato.start()
 
-messageQueue = new MessageQueue process.env.SPLUNK_URI, librato
+transport = new SplunkTransport process.env.SPLUNK_URI, librato
+messageQueue = new MessageQueue transport, librato
 
 # keep a cache of the last 100 unparseable messages so we can attempt to reassemble
 # loglines that heroku's drain infrastructure splits into 1024 character chunks.

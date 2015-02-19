@@ -12,8 +12,7 @@ class MessageQueue extends EventEmitter
 
   @MAX_LOG_LINE_BATCH_SIZE: 1000
 
-  constructor: (splunkURI, @stats, @throttle = true) ->
-    @_transport = new SplunkTransport splunkURI, @stats
+  constructor: (@_transport, @stats, @throttle = true) ->
     @_queue = async.cargo @_worker.bind(@), @constructor.MAX_LOG_LINE_BATCH_SIZE
 
   push: (args...) ->

@@ -2,10 +2,8 @@ Transport = require './transport'
 
 class SumoLogicTransport extends Transport
 
-  name: 'sumo_logic'
-
-  constructor: (@_url, @stats) ->
-    super()
+  constructor: (@_url, stats) ->
+    super 'sumo_logic', stats
 
   _makeRequestConfig: ->
     {
@@ -20,7 +18,7 @@ class SumoLogicTransport extends Transport
     requestConfig = @_makeRequestConfig()
     requestConfig.body = messages.map(JSON.stringify).join("\r\n")
     requestConfig.timeout = 60 * 1000 # 60s
-    @request requestConfig, cb
+    @_request requestConfig, cb
 
 module.exports = SumoLogicTransport
 
