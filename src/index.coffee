@@ -76,6 +76,11 @@ syslogMessageToJSON = (syslogMessage) ->
   return result
 
 app = http.createServer (req, res) ->
+
+  # Herkou logdrain is picky, see https://devcenter.heroku.com/articles/log-drains
+  res.setHeader 'Content-Length', 0
+  res.setHeader 'Connection', 'close'
+
   try
     urlParts = url.parse(req.url)
 
