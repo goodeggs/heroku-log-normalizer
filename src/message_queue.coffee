@@ -1,6 +1,6 @@
 async = require 'async'
 request = require 'request'
-{EventEmitter} = require 'events'
+librato = require 'librato-node'
 
 SplunkTransport = require './splunk_transport'
 logger = (require './logger').child module: 'message_queue'
@@ -8,11 +8,11 @@ logger = (require './logger').child module: 'message_queue'
 milliseconds = ([seconds, nanoSeconds]) ->
   seconds * 1000 + ~~(nanoSeconds / 1e6) # bitwise NOT NOT will floor
 
-class MessageQueue extends EventEmitter
+class MessageQueue
 
   @MAX_LOG_LINE_BATCH_SIZE: 1000
 
-  constructor: (@_transport, @stats, @throttle = true) ->
+  constructor: (@_transport, @throttle = true) ->
     @_queue = async.cargo @_worker.bind(@), @constructor.MAX_LOG_LINE_BATCH_SIZE
 
   push: (args...) ->
@@ -50,10 +50,10 @@ class MessageQueue extends EventEmitter
   _send: (messages, cb) ->
     @_transport.send messages, (err, {responseTime, size}) =>
       if err?
-        @stats.increment 'error', messages.length
+        librato.increment 'error', messages.length
         @_queue.push messages # retry later
       else
-        @stats.increment 'outgoing', messages.length
+        librato.increment 'outgoing', messages.length
       logger.info {responseTime, size, queue: @_queue.length(), messages: messages.length}, 'Response complete'
       cb()
 

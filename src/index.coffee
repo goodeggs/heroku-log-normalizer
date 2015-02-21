@@ -1,12 +1,10 @@
-SyslogParser = require('glossy').Parse
-LRU = require 'lru-cache'
 librato = require 'librato-node'
-http = require 'http'
-url = require 'url'
 os = require 'os'
-MessageQueue = require './message_queue'
 
-logger = require('./logger').child module: 'app'
+app = require './app'
+MessageQueue = require './message_queue'
+logdrainGateway = require './logdrain_gateway'
+logger = require('./logger').child module: 'server'
 
 librato.configure
   email: process.env.LIBRATO_EMAIL
@@ -25,96 +23,11 @@ else if /sumologic[.]com/i.test(process.env.TRANSPORT_URI)
 else
   throw new Error("could not infer transport from TRANSPORT_URI=#{process.env.TRANSPORT_URI}")
 
-messageQueue = new MessageQueue transport, librato
-
-# keep a cache of the last 100 unparseable messages so we can attempt to reassemble
-# loglines that heroku's drain infrastructure splits into 1024 character chunks.
-invalidMessageCache = LRU(100)
-
-extractMessage = (syslogMessage, parser) ->
-  try
-    return parser(syslogMessage.message)
-  catch e
-    key = [syslogMessage.host, syslogMessage.pid, syslogMessage.time].join('|')
-    if (current = invalidMessageCache.get(key))?
-      current += syslogMessage.message
-      try
-        msg = parser(current)
-        librato.increment 'reconstructed'
-        return msg
-      catch e
-        invalidMessageCache.set key, current
-    else
-      invalidMessageCache.set key, syslogMessage.message
-  return null
-
-LEADING_TRIMMER = /^[^<]+/
-
-syslogMessageToJSON = (syslogMessage) ->
-  parsed = SyslogParser.parse syslogMessage.replace(LEADING_TRIMMER, '')
-
-  result = switch parsed.appName
-    when 'heroku'
-      extractMessage parsed, ((msg) -> {msg})
-    when 'app'
-      extractMessage parsed, JSON.parse
-    else
-      # unknown format
-      {msg: parsed.message, timestamp: new Date().toISOString()}
-
-  return null unless result?
-
-  # make time field match splunk's expectation of timestamp
-  result.timestamp ?= result.time or parsed.time.toISOString()
-  delete result.time
-
-  # clean some fields from the syslog header
-  delete parsed.originalMessage
-  delete parsed.message
-
-  result.syslog = parsed
-  return result
-
-app = http.createServer (req, res) ->
-
-  # Herkou logdrain is picky, see https://devcenter.heroku.com/articles/log-drains
-  res.setHeader 'Content-Length', 0
-  res.setHeader 'Connection', 'close'
-
-  try
-    urlParts = url.parse(req.url)
-
-    if urlParts.path.indexOf("/drain") is 0
-      data = ''
-
-      req.on 'data', (chunk) ->
-        data += chunk
-
-      req.on 'end', ->
-        res.writeHead 200
-        res.end()
-
-        syslogMessages = if data.indexOf("\n") > -1 then data.split("\n") else [data, ""]
-        syslogMessages.pop()
-
-        if syslogMessages.length
-          librato.increment 'incoming', syslogMessages.length
-          for syslogMessage in syslogMessages
-            if json = syslogMessageToJSON(syslogMessage)
-              messageQueue.push json
-            else
-              librato.increment 'invalid'
-
-    else
-      res.writeHead 404
-      res.end()
-  catch e
-    logger.error e.stack ? e
-    res.writeHead 503
-    res.end()
+messageQueue = new MessageQueue transport
+logdrainGateway.on 'data', (data) ->
+  messageQueue.push data
 
 app.listen process.env.PORT ? 8000
-
 
 _exit = do ->
   exited = 0
@@ -140,3 +53,4 @@ process.on 'SIGINT', do ->
 process.on 'SIGTERM', ->
   logger.warn 'Got SIGTERM.  Exiting.'
   _exit(127 + 15)
+

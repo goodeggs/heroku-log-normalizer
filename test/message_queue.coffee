@@ -5,14 +5,14 @@ MessageQueue = require '../lib/message_queue'
 Transport = require '../lib/transport'
 
 describe 'MessageQueue', ->
-  {transport, queue, stats, statsMock} = {}
+  {transport, queue} = {}
 
   beforeEach ->
     sinon.stub librato, 'increment'
     sinon.stub librato, 'timing'
     transport = sinon.createStubInstance Transport
     transport.send.yields(null, {responseTime: 500, size: 1024})
-    queue = new MessageQueue transport, librato, false
+    queue = new MessageQueue transport, false
 
   afterEach ->
     librato.increment.restore()

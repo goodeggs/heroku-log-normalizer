@@ -2,19 +2,18 @@
 
 librato = require 'librato-node'
 
-appBuilder = require '../lib/app'
-MessageQueue = require '../lib/message_queue'
+app = require '../lib/app'
+logdrainGateway = require '../lib/logdrain_gateway'
 
 describe 'app', ->
-  {app, messageQueue} = {}
 
   beforeEach ->
     sinon.stub(librato, 'increment')
-    messageQueue = sinon.createStubInstance MessageQueue
-    app = appBuilder librato, messageQueue
+    sinon.stub(logdrainGateway, 'write')
 
   afterEach ->
     librato.increment.restore()
+    logdrainGateway.write.restore()
 
   describe 'a POST with two log lines', ->
     {res} = {}
@@ -28,9 +27,7 @@ describe 'app', ->
           done(err)
 
     it 'enqueues two messages', ->
-      expect(messageQueue.push).to.have.been.calledTwice
-      expect(messageQueue.push).to.have.been.calledWithMatch name: 'www', appInstance: 'production'
-      expect(messageQueue.push).to.have.been.calledWithMatch msg: 'sample#memory_total=190.64MB'
+      expect(logdrainGateway.write).to.have.been.calledOnce
 
     it 'returns 200', ->
       expect(res.statusCode).to.equal 200
@@ -40,10 +37,33 @@ describe 'app', ->
       expect(res.headers['connection']).to.equal 'close'
 
   describe 'two POSTs with the same Logplex-Frame-Id', ->
+    {res1, res2} = {}
 
-    it 'logs one set of messages'
+    beforeEach (done) ->
+      chai.request(app)
+        .post '/drain'
+        .set 'Logplex-Frame-Id', 'abcdefg'
+        .send LOG_DATA
+        .end (err, _res1) ->
+          res1 = _res1
+          done(err) if err?
+      chai.request(app)
+        .post '/drain'
+        .set 'Logplex-Frame-Id', 'abcdefg'
+        .send LOG_DATA
+        .end (err, _res2) ->
+          res2 = _res2
+          done(err)
 
-    it 'always returns 200'
+    it 'logs one set of messages', ->
+      expect(logdrainGateway.write).to.have.been.calledOnce
+
+    it 'increments the duplicate counter', ->
+      expect(librato.increment).to.have.been.calledWith 'duplicate'
+
+    it 'always returns 200', ->
+      expect(res1.statusCode).to.equal 200
+      expect(res2.statusCode).to.equal 200
 
 LOG_DATA = '''
   Dec 18 00:50:48 23.20.136.26 483 <13>1 2013-12-18T00:50:49.193368+00:00 d.1077786c-2728-483f-911f-89a0ef249867 app web.1 - - {"name":"www","appInstance":"production"}
