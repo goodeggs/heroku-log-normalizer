@@ -16,7 +16,11 @@ class SumoLogicTransport extends Transport
 
   send: (messages, cb) ->
     requestConfig = @_makeRequestConfig()
-    requestConfig.body = messages.map(JSON.stringify).join("\r\n")
+    requestConfig.body = messages.map (message) ->
+      orderedMessage = {timestamp: message.timestamp}
+      orderedMessage[k] = v for k, v of message when k isnt 'timestamp'
+      JSON.stringify(orderedMessage)
+    .join("\r\n")
     requestConfig.timeout = 60 * 1000 # 60s
     @_request requestConfig, cb
 

@@ -21,20 +21,20 @@ describe 'SumoLogicTransport', ->
 
     beforeEach (done) ->
       scope = nock 'https://collectors.sumologic.com'
-        .post '/receiver/v1/http/foobar', '{"foo":1}'
+        .post '/receiver/v1/http/foobar', '{"timestamp":"2015","foo":1}'
         .reply 200
-      transport.send [{foo: 1}], done
+      transport.send [{foo: 1, timestamp: '2015'}], done
 
     afterEach ->
       nock.cleanAll()
 
-    it 'posts to sumo logic', ->
+    it 'posts to sumo logic and moves timestamp to the front of the message', ->
       scope.done()
       
     it 'records stats', ->
       expect(librato.increment).to.have.been.calledWith 'sumo_logic.count'
       expect(librato.timing).to.have.been.calledWithMatch 'sumo_logic.time', sinon.match.number
-      expect(librato.timing).to.have.been.calledWith 'sumo_logic.size', 9
+      expect(librato.timing).to.have.been.calledWith 'sumo_logic.size', 28
 
   describe 'sending two messages', ->
     {scope} = {}
