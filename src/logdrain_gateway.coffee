@@ -1,11 +1,10 @@
 SyslogParser = require('glossy').Parse
 LRU = require 'lru-cache'
 librato = require 'librato-node'
-{LineStream} = require 'byline'
 through = require 'through'
 combine = require 'stream-combiner'
+qs = require 'querystring'
 
-LEADING_JSON_OPTS = /^({[^!]+})!/
 LEADING_SYSLOG_TRIMMER = /^[^<]+/
 
 # keeps a cache of the last 100 unparseable messages so we can attempt to reassemble
@@ -31,12 +30,10 @@ extractMessage = (syslogMessage, parser) ->
 
 syslogMessageToJSON = (syslogMessage) ->
 
-  opts = {}
-
   # pull explicit options off the front of the line
-  if (json = syslogMessage.match(LEADING_JSON_OPTS)?[1])?
-    try opts = JSON.parse(json)
-    syslogMessage = syslogMessage.replace(LEADING_JSON_OPTS, '')
+  [opts, syslogMessage...] = syslogMessage.split('!')
+  opts = qs.parse opts
+  syslogMessage = syslogMessage.join('!') # reassemble the rest
 
   # trim some invalid syslog stuff Heroku adds
   syslogMessage = syslogMessage.replace(LEADING_SYSLOG_TRIMMER, '')
@@ -75,5 +72,5 @@ parseStream = through (line) ->
   else
     librato.increment 'invalid'
 
-module.exports = combine(new LineStream, parseStream)
+module.exports = parseStream
 
