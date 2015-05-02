@@ -21,6 +21,13 @@ describe 'logdrain gateway', ->
     it 'emits json', ->
       expect(logdrainGateway.emit).to.have.been.calledWithMatch 'data', name: 'www', appInstance: 'production'
 
+  describe 'a json log with options', ->
+    beforeEach ->
+      logdrainGateway.write 'name=foo!Dec 18 00:50:48 23.20.136.26 483 <13>1 2013-12-18T00:50:49.193368+00:00 d.1077786c-2728-483f-911f-89a0ef249867 app web.1 - - {"name":"www","appInstance":"production"}'
+
+    it 'prefers logline values', ->
+      expect(logdrainGateway.emit).to.have.been.calledWithMatch 'data', name: 'www', appInstance: 'production'
+
   describe 'a logfmt log', ->
 
     beforeEach ->

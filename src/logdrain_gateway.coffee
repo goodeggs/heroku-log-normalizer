@@ -60,8 +60,8 @@ syslogMessageToJSON = (syslogMessage) ->
   delete parsed.message
   result.syslog = parsed
 
-  # override any explicit options
-  result[k] = v for k, v of opts
+  # apply (as defaults) any options we were provided
+  result[k] ?= v for k, v of opts
 
   return result
 
