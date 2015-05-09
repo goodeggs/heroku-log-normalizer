@@ -3,17 +3,17 @@
 librato = require 'librato-node'
 
 app = require '../lib/app'
-logdrainGateway = require '../lib/logdrain_gateway'
+syslogToJsonStream = require '../lib/syslog_to_json_stream'
 
 describe 'app', ->
 
   beforeEach ->
     sinon.stub(librato, 'increment')
-    sinon.stub(logdrainGateway, 'write')
+    sinon.stub(syslogToJsonStream, 'write')
 
   afterEach ->
     librato.increment.restore()
-    logdrainGateway.write.restore()
+    syslogToJsonStream.write.restore()
 
   describe 'a POST with two log lines', ->
     {res} = {}
@@ -28,9 +28,9 @@ describe 'app', ->
           done(err)
 
     it 'enqueues two messages', ->
-      expect(logdrainGateway.write).to.have.been.calledTwice
-      expect(logdrainGateway.write.getCall(0).args[0]).to.equal '!<172>1 2015-05-09T20:21:24+00:00 host heroku logplex - Error L10 (output buffer overflow): 1 messages dropped since 2015-05-09T20:19:03+00:00.'
-      expect(logdrainGateway.write.getCall(1).args[0]).to.equal '!<45>1 2015-05-09T20:21:25.608433+00:00 host heroku web.1 - State changed from starting to crashed\n'
+      expect(syslogToJsonStream.write).to.have.been.calledTwice
+      expect(syslogToJsonStream.write.getCall(0).args[0]).to.equal '!<172>1 2015-05-09T20:21:24+00:00 host heroku logplex - Error L10 (output buffer overflow): 1 messages dropped since 2015-05-09T20:19:03+00:00.'
+      expect(syslogToJsonStream.write.getCall(1).args[0]).to.equal '!<45>1 2015-05-09T20:21:25.608433+00:00 host heroku web.1 - State changed from starting to crashed\n'
 
     it 'returns 200', ->
       expect(res.statusCode).to.equal 200
@@ -59,7 +59,7 @@ describe 'app', ->
           done(err)
 
     it 'logs one set of messages', ->
-      expect(logdrainGateway.write).to.have.been.calledTwice
+      expect(syslogToJsonStream.write).to.have.been.calledTwice
 
     it 'increments the duplicate counter', ->
       expect(librato.increment).to.have.been.calledWith 'duplicate'
@@ -82,9 +82,9 @@ describe 'app', ->
           done(err)
 
     it 'enqueues two messages with options', ->
-      expect(logdrainGateway.write).to.have.been.calledTwice
-      expect(logdrainGateway.write.getCall(0).args[0]).to.equal 'name=status&appInstance=production!<172>1 2015-05-09T20:21:24+00:00 host heroku logplex - Error L10 (output buffer overflow): 1 messages dropped since 2015-05-09T20:19:03+00:00.'
-      expect(logdrainGateway.write.getCall(1).args[0]).to.equal 'name=status&appInstance=production!<45>1 2015-05-09T20:21:25.608433+00:00 host heroku web.1 - State changed from starting to crashed\n'
+      expect(syslogToJsonStream.write).to.have.been.calledTwice
+      expect(syslogToJsonStream.write.getCall(0).args[0]).to.equal 'name=status&appInstance=production!<172>1 2015-05-09T20:21:24+00:00 host heroku logplex - Error L10 (output buffer overflow): 1 messages dropped since 2015-05-09T20:19:03+00:00.'
+      expect(syslogToJsonStream.write.getCall(1).args[0]).to.equal 'name=status&appInstance=production!<45>1 2015-05-09T20:21:25.608433+00:00 host heroku web.1 - State changed from starting to crashed\n'
 
     it 'returns 200', ->
       expect(res.statusCode).to.equal 200

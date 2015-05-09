@@ -5,8 +5,8 @@ librato = require 'librato-node'
 through = require 'through'
 combine = require 'stream-combiner'
 
-logdrainGateway = require './logdrain_gateway'
 herokuSyslogStream = require './heroku_syslog_stream'
+syslogToJsonStream = require './syslog_to_json_stream'
 logger = require('./logger').child module: 'app'
 
 withQuery = (query) ->
@@ -36,7 +36,7 @@ app = http.createServer (req, res) ->
       res.end()
     else
       frameIdCache.set frameId, 1
-      req.pipe combine(herokuSyslogStream(), withQuery(urlParts.query), logdrainGateway), end: false
+      req.pipe combine(herokuSyslogStream(), withQuery(urlParts.query), syslogToJsonStream), end: false
       req.on 'end', ->
         res.writeHead 200
         res.end()

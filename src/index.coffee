@@ -3,7 +3,7 @@ os = require 'os'
 
 app = require './app'
 MessageQueue = require './message_queue'
-logdrainGateway = require './logdrain_gateway'
+syslogToJsonStream = require './syslog_to_json_stream'
 logger = require('./logger').child module: 'server'
 
 librato.configure
@@ -24,7 +24,7 @@ else
   throw new Error("could not infer transport from TRANSPORT_URI=#{process.env.TRANSPORT_URI}")
 
 messageQueue = new MessageQueue transport
-logdrainGateway.on 'data', (data) ->
+syslogToJsonStream.on 'data', (data) ->
   messageQueue.push data
 
 app.listen process.env.PORT ? 8000
