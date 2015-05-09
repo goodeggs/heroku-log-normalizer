@@ -50,10 +50,6 @@
         }
       }
     },
-    "byline": {
-      "version": "4.2.1",
-      "from": "byline@"
-    },
     "glossy": {
       "version": "0.1.5",
       "from": "glossy@0.1.5"

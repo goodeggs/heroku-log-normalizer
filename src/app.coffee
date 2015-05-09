@@ -2,16 +2,16 @@ http = require 'http'
 url = require 'url'
 LRU = require 'lru-cache'
 librato = require 'librato-node'
-{LineStream} = require 'byline'
 through = require 'through'
 combine = require 'stream-combiner'
 
-logdrainGateway = require './logdrain_gateway'
+herokuSyslogStream = require './heroku_syslog_stream'
+syslogToJsonStream = require './syslog_to_json_stream'
 logger = require('./logger').child module: 'app'
 
 withQuery = (query) ->
-  through (buf) ->
-    @queue Buffer.concat([new Buffer("#{query or ''}!", 'utf8'), buf])
+  through (data) ->
+    @queue "#{query or ''}!#{data}"
 
 frameIdCache = LRU(2000)
 
@@ -36,7 +36,7 @@ app = http.createServer (req, res) ->
       res.end()
     else
       frameIdCache.set frameId, 1
-      req.pipe combine(new LineStream, withQuery(urlParts.query), logdrainGateway), end: false
+      req.pipe combine(herokuSyslogStream(), withQuery(urlParts.query), syslogToJsonStream), end: false
       req.on 'end', ->
         res.writeHead 200
         res.end()

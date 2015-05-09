@@ -5,10 +5,9 @@ through = require 'through'
 combine = require 'stream-combiner'
 qs = require 'querystring'
 
-LEADING_SYSLOG_TRIMMER = /^[^<]+/
-
 # keeps a cache of the last 100 unparseable messages so we can attempt to reassemble
-# loglines that heroku's drain infrastructure splits into 1024 character chunks.
+# loglines that heroku's drain infrastructure splits into 10000 byte chunks.
+# https://devcenter.heroku.com/articles/logging#log-format
 invalidMessageCache = LRU(100)
 
 extractMessage = (syslogMessage, parser) ->
@@ -34,9 +33,6 @@ syslogMessageToJSON = (syslogMessage) ->
   [opts, syslogMessage...] = syslogMessage.split('!')
   opts = qs.parse opts
   syslogMessage = syslogMessage.join('!') # reassemble the rest
-
-  # trim some invalid syslog stuff Heroku adds
-  syslogMessage = syslogMessage.replace(LEADING_SYSLOG_TRIMMER, '')
 
   parsed = SyslogParser.parse syslogMessage
 
