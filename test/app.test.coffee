@@ -29,8 +29,8 @@ describe 'app', ->
 
     it 'enqueues two messages', ->
       expect(logdrainGateway.write).to.have.been.calledTwice
-      expect(logdrainGateway.write.getCall(0).args[0].toString('utf8')).to.match ///^!Dec///
-      expect(logdrainGateway.write.getCall(1).args[0].toString('utf8')).to.match ///^!Dec///
+      expect(logdrainGateway.write.getCall(0).args[0]).to.equal '!<172>1 2015-05-09T20:21:24+00:00 host heroku logplex - Error L10 (output buffer overflow): 1 messages dropped since 2015-05-09T20:19:03+00:00.'
+      expect(logdrainGateway.write.getCall(1).args[0]).to.equal '!<45>1 2015-05-09T20:21:25.608433+00:00 host heroku web.1 - State changed from starting to crashed\n'
 
     it 'returns 200', ->
       expect(res.statusCode).to.equal 200
@@ -83,15 +83,14 @@ describe 'app', ->
 
     it 'enqueues two messages with options', ->
       expect(logdrainGateway.write).to.have.been.calledTwice
-      expect(logdrainGateway.write.getCall(0).args[0].toString('utf8')).to.match ///^name=status&appInstance=production!Dec///
-      expect(logdrainGateway.write.getCall(1).args[0].toString('utf8')).to.match ///^name=status&appInstance=production!Dec///
+      expect(logdrainGateway.write.getCall(0).args[0]).to.equal 'name=status&appInstance=production!<172>1 2015-05-09T20:21:24+00:00 host heroku logplex - Error L10 (output buffer overflow): 1 messages dropped since 2015-05-09T20:19:03+00:00.'
+      expect(logdrainGateway.write.getCall(1).args[0]).to.equal 'name=status&appInstance=production!<45>1 2015-05-09T20:21:25.608433+00:00 host heroku web.1 - State changed from starting to crashed\n'
 
     it 'returns 200', ->
       expect(res.statusCode).to.equal 200
 
 
 LOG_DATA = '''
-  Dec 18 00:50:48 23.20.136.26 483 <13>1 2013-12-18T00:50:49.193368+00:00 d.1077786c-2728-483f-911f-89a0ef249867 app web.1 - - {"name":"www","appInstance":"production"}
-  Dec 18 00:50:48 23.20.136.26 485 <13>1 2013-12-18T00:50:49.194368+00:00 d.1077786c-2728-483f-911f-89a0ef249867 heroku router - - sample#memory_total=190.64MB
+  142 <172>1 2015-05-09T20:21:24+00:00 host heroku logplex - Error L10 (output buffer overflow): 1 messages dropped since 2015-05-09T20:19:03+00:00.98 <45>1 2015-05-09T20:21:25.608433+00:00 host heroku web.1 - State changed from starting to crashed
 
 '''

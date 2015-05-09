@@ -9,7 +9,6 @@
     "librato-node": "~1.2.2",
     "request": "*",
     "bunyan": "~1.3.2",
-    "byline": "^4.2.1",
     "through": "^2.3.6",
     "stream-combiner": "^0.2.1"
   },
