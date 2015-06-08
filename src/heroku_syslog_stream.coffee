@@ -6,15 +6,14 @@ through = require 'through'
 ###
 
 module.exports = ->
+  inLength = false
+  length = ''
+  messageRemaining = 0
+  message = ''
 
   through (data) ->
-    inLength = false
-    length = ''
-    messageRemaining = 0
-    message = ''
     for charCode in data
       char = String.fromCharCode(charCode)
-      debugger
       switch true
         when messageRemaining > 0
           message += char
