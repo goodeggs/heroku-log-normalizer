@@ -13,15 +13,15 @@ class Transport
     throw new Error('implement me')
 
   _request: (opts, cb) ->
-    @_stats.increment "#{@_name}.count"
+    @_stats?.increment "#{@_name}.count"
     timer = process.hrtime()
     request opts, @_onComplete(cb, {timer, size: opts.body.length})
 
   _onComplete: (cb, {timer, size}) ->
     (err, res) =>
       responseTime = milliseconds process.hrtime(timer)
-      @_stats.timing "#{@_name}.time", responseTime
-      @_stats.timing "#{@_name}.size", size
+      @_stats?.timing "#{@_name}.time", responseTime
+      @_stats?.timing "#{@_name}.size", size
       @_logger.error err if err?
       if !err and res.statusCode >= 400
         @_logger.error {status: res.statusCode, body: res.body}, "Error: #{res.statusCode} response"

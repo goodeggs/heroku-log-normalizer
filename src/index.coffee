@@ -21,7 +21,9 @@ else if /sumologic[.]com/i.test(process.env.TRANSPORT_URI)
   SumoLogicTransport = require './sumo_logic_transport'
   transport = new SumoLogicTransport process.env.TRANSPORT_URI, librato
 else
-  throw new Error("could not infer transport from TRANSPORT_URI=#{process.env.TRANSPORT_URI}")
+  logger.warn "could not infer transport from TRANSPORT_URI=#{process.env.TRANSPORT_URI}, using stdout"
+  ConsoleTransport = require './console_transport'
+  transport = new ConsoleTransport
 
 messageQueue = new MessageQueue transport
 syslogToJsonStream.on 'data', (data) ->
