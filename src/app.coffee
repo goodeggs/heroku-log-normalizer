@@ -36,7 +36,15 @@ app = http.createServer (req, res) ->
       res.end()
     else
       frameIdCache.set frameId, 1
-      req.pipe combine(herokuSyslogStream(), withQuery(urlParts.query), syslogToJsonStream), end: false
+
+      messageStream = combine herokuSyslogStream(), withQuery(urlParts.query)
+
+      # listening for 'data' rather than combining above avoids an EventEmitter
+      # memory leak because syslogToJsonStream lives across requests
+      messageStream.on 'data', syslogToJsonStream.write.bind(syslogToJsonStream)
+
+      req.pipe messageStream
+
       req.on 'end', ->
         res.writeHead 200
         res.end()

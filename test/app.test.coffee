@@ -1,5 +1,6 @@
 {sinon, chai, expect} = require './test_helper'
 
+async = require 'async'
 librato = require 'librato-node'
 
 app = require '../lib/app'
@@ -88,6 +89,26 @@ describe 'app', ->
 
     it 'returns 200', ->
       expect(res.statusCode).to.equal 200
+
+  describe 'given EventEmitter.defaultMaxListeners + 1 POSTs', ->
+    {agent} = {}
+
+    beforeEach ->
+      agent = chai.request.agent(app)
+
+    # this test is here to get Node to spit out the EventEmitter maxListeners warning,
+    # but even if it does this test will succeed.
+    it 'all requests end in 200 OK', (done) ->
+      async.eachSeries [1..11], (idx, cb) ->
+        agent
+          .post '/drain'
+          .set 'Logplex-Frame-Id', idx
+          .send LOG_DATA
+          .end (err, res) ->
+            expect(err).not.to.exist
+            expect(res).to.have.status 200
+            cb()
+      , done
 
 
 LOG_DATA = '''
