@@ -4,13 +4,14 @@
   "private": true,
   "dependencies": {
     "async": "*",
-    "glossy": "*",
-    "lru-cache": "*",
-    "librato-node": "~1.2.2",
-    "request": "*",
     "bunyan": "~1.3.2",
-    "through": "^2.3.6",
-    "stream-combiner": "^0.2.1"
+    "glossy": "*",
+    "librato-node": "~1.2.2",
+    "lru-cache": "*",
+    "on-finished": "^2.3.0",
+    "request": "*",
+    "stream-combiner": "^0.2.1",
+    "through": "^2.3.6"
   },
   "devDependencies": {
     "chai": "^2.0.0",

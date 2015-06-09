@@ -4,6 +4,7 @@ LRU = require 'lru-cache'
 librato = require 'librato-node'
 through = require 'through'
 combine = require 'stream-combiner'
+onFinished = require 'on-finished'
 
 herokuSyslogStream = require './heroku_syslog_stream'
 syslogToJsonStream = require './syslog_to_json_stream'
@@ -45,8 +46,10 @@ app = http.createServer (req, res) ->
 
       req.pipe messageStream
 
-      req.on 'end', ->
-        res.writeHead 200
+      # onFinished handles error events, so a closed socket doesn't crash the process
+      onFinished req, (err) ->
+        logger.error(err.stack or err) if err?
+        res.writeHead(err? and 503 or 200)
         res.end()
   catch e
     logger.error e.stack ? e
