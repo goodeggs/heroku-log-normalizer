@@ -193,6 +193,10 @@
           "from": "ee-first@1.1.1"
         }
       }
+    },
+    "coffee-script": {
+      "version": "1.9.1",
+      "from": "coffee-script@1.9.1"
     }
   }
 }
