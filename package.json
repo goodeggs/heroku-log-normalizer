@@ -22,9 +22,6 @@
     "sinon-chai": "^2.7.0",
     "chai-http": "^1.0.0"
   },
-  "bin": {
-    "heroku_log_normalizer": "bin/heroku_log_normalizer"
-  },
   "scripts": {
     "test": "NODE_ENV='test' mocha"
   },
