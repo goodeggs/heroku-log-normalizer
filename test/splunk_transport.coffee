@@ -2,7 +2,7 @@
 nock = require 'nock'
 librato = require 'librato-node'
 
-SplunkTransport = require '../lib/splunk_transport'
+SplunkTransport = require '../src/splunk_transport'
 
 describe 'SplunkTransport', ->
   {transport} = {}

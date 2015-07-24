@@ -2,7 +2,7 @@
 
 librato = require 'librato-node'
 
-stream = require '../lib/syslog_to_json_stream'
+stream = require '../src/syslog_to_json_stream'
 
 describe 'syslog_to_json_stream', ->
 

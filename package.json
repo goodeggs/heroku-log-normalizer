@@ -5,6 +5,7 @@
   "dependencies": {
     "async": "*",
     "bunyan": "~1.3.2",
+    "coffee-script": "^1.9.1",
     "glossy": "*",
     "librato-node": "~1.2.2",
     "lru-cache": "*",
@@ -15,7 +16,6 @@
   },
   "devDependencies": {
     "chai": "^2.0.0",
-    "coffee-script": "^1.9.1",
     "mocha": "^2.1.0",
     "nock": "^0.59.1",
     "sinon": "^1.12.2",
@@ -23,14 +23,10 @@
     "chai-http": "^1.0.0"
   },
   "bin": {
-    "heroku_log_normalizer": "./bin/heroku_log_normalizer.js"
+    "heroku_log_normalizer": "bin/heroku_log_normalizer"
   },
   "scripts": {
-    "prepublish": "rm -rf ./lib && npm run compile",
-    "compile": "coffee --bare --compile --output lib/ src/",
-    "build": "npm run compile",
-    "test": "NODE_ENV='test' mocha",
-    "pretest": "npm run build"
+    "test": "NODE_ENV='test' mocha"
   },
   "engines": {
     "node": "0.10.36"

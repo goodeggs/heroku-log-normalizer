@@ -3,8 +3,8 @@
 async = require 'async'
 librato = require 'librato-node'
 
-app = require '../lib/app'
-syslogToJsonStream = require '../lib/syslog_to_json_stream'
+app = require '../src/app'
+syslogToJsonStream = require '../src/syslog_to_json_stream'
 
 describe 'app', ->
 

@@ -1,8 +1,8 @@
 {expect, sinon} = require './test_helper'
 librato = require 'librato-node'
 
-MessageQueue = require '../lib/message_queue'
-Transport = require '../lib/transport'
+MessageQueue = require '../src/message_queue'
+Transport = require '../src/transport'
 
 describe 'MessageQueue', ->
   {transport, queue} = {}

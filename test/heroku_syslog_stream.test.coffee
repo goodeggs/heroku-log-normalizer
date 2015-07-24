@@ -1,7 +1,7 @@
 {expect, sinon} = require './test_helper'
 fs = require 'fs'
 path = require 'path'
-herokuSyslogStream = require '../lib/heroku_syslog_stream'
+herokuSyslogStream = require '../src/heroku_syslog_stream'
 
 describe 'herokuSyslogStream', ->
 

@@ -2,7 +2,7 @@
 nock = require 'nock'
 librato = require 'librato-node'
 
-SumoLogicTransport = require '../lib/sumo_logic_transport'
+SumoLogicTransport = require '../src/sumo_logic_transport'
 
 describe 'SumoLogicTransport', ->
   {transport} = {}
