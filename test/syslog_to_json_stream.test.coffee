@@ -14,19 +14,33 @@ describe 'syslog_to_json_stream', ->
     librato.increment.restore()
     stream.emit.restore()
 
-  describe 'a json log', ->
+  describe 'a json app log', ->
     beforeEach ->
       stream.write '!<13>1 2013-12-18T00:50:49.193368+00:00 d.1077786c-2728-483f-911f-89a0ef249867 app web.1 - - {"name":"www","appInstance":"production"}'
 
     it 'emits json', ->
       expect(stream.emit).to.have.been.calledWithMatch 'data', name: 'www', appInstance: 'production'
 
-  describe 'a json log with options', ->
+  describe 'a json app log with options', ->
     beforeEach ->
       stream.write 'name=foo!<13>1 2013-12-18T00:50:49.193368+00:00 d.1077786c-2728-483f-911f-89a0ef249867 app web.1 - - {"name":"www","appInstance":"production"}'
 
     it 'prefers logline values', ->
       expect(stream.emit).to.have.been.calledWithMatch 'data', name: 'www', appInstance: 'production'
+
+  describe 'a plain app log', ->
+    beforeEach ->
+      stream.write '!<13>1 2013-12-18T00:50:49.193368+00:00 d.1077786c-2728-483f-911f-89a0ef249867 app web.1 - - foo bar'
+
+    it 'emits json', ->
+      expect(stream.emit).to.have.been.calledWithMatch 'data', msg: 'foo bar'
+
+  describe 'a plain app log with options', ->
+    beforeEach ->
+      stream.write 'name=www&appInstance=production!<13>1 2013-12-18T00:50:49.193368+00:00 d.1077786c-2728-483f-911f-89a0ef249867 app web.1 - - foo bar'
+
+    it 'includes those options', ->
+      expect(stream.emit).to.have.been.calledWithMatch 'data', name: 'www', appInstance: 'production', msg: 'foo bar'
 
   describe 'a logfmt log', ->
 
