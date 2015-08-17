@@ -12,6 +12,9 @@ librato.configure
   source: os.hostname() # Worker number?
   prefix: 'heroku_log_normalizer.'
 
+librato.on 'error', (err) ->
+  logger.error err, 'Error sending to Librato'
+
 librato.start()
 
 if /splunkstorm[.]com/i.test(process.env.TRANSPORT_URI)
