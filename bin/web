@@ -1,0 +1,3 @@
+#!/bin/sh
+export DYNO="web.${HOSTNAME}"
+exec node server.js
